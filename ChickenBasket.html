@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chicken and Egg Catch Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f8f8f8;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-image: url('https://codehs.com/uploads/f27abe09c6c77c71ffc6723502ae3038');
+            background-size: cover;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        // Setup canvas and context
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth * 0.9;
+        canvas.height = window.innerHeight * 0.8;
+
+        // Constants for game elements
+        const scoreToWin = 30;
+        const CHICKEN_WIDTH = 70, CHICKEN_HEIGHT = 60;
+        const EGG_WIDTH = 40, EGG_HEIGHT = 60;
+        const BASKET_WIDTH = 90, BASKET_HEIGHT = 80;
+        const BOMB_WIDTH = 50, BOMB_HEIGHT = 50;
+        const BASKET_OFFSET = 50;
+
+        // Game variables
+        let basketX = canvas.width / 2 - BASKET_WIDTH / 2;
+        let basketY = canvas.height - BASKET_HEIGHT - BASKET_OFFSET;
+        let dxBasket = 20, dyBasket = 10;
+        let dx = 4, dy = 5;
+        let score = 0, lives = 3;
+
+        let eggs = [], chickens = [], bombs = [];
+        let gameInterval, objectInterval;
+
+        // Load images
+        const basketImage = new Image();
+        basketImage.src = 'https://codehs.com/uploads/098d61ea64924f2e6e8ecf73b74bc345';
+
+        const eggImage = new Image();
+        eggImage.src = 'https://codehs.com/uploads/ed06ee296bf5c8552b3bc6a5c478e807';
+
+        const chickenImage = new Image();
+        chickenImage.src = 'https://codehs.com/uploads/5d42bc66a0a033344062223d71c052d8';
+
+        const bombImage = new Image();
+        bombImage.src = 'https://codehs.com/uploads/5fb66b45e1b6e46013f2992d77c56b6c';
+
+        // Draw basket
+        function drawBasket() {
+            ctx.drawImage(basketImage, basketX, basketY, BASKET_WIDTH, BASKET_HEIGHT);
+        }
+
+        // Draw falling objects
+        function drawObjects() {
+            eggs.forEach(egg => ctx.drawImage(eggImage, egg.x, egg.y, EGG_WIDTH, EGG_HEIGHT));
+            chickens.forEach(chicken => ctx.drawImage(chickenImage, chicken.x, chicken.y, CHICKEN_WIDTH, CHICKEN_HEIGHT));
+            bombs.forEach(bomb => ctx.drawImage(bombImage, bomb.x, bomb.y, BOMB_WIDTH, BOMB_HEIGHT));
+        }
+
+        // Generate random objects
+        function spawnObject() {
+            const x = Math.random() * (canvas.width - EGG_WIDTH);
+            const type = Math.floor(Math.random() * 3);
+            if (type === 0) eggs.push({ x, y: 0 });
+            else if (type === 1) chickens.push({ x, y: 0 });
+            else bombs.push({ x, y: 0 });
+        }
+
+        // Move objects and check collisions
+        function moveObjects() {
+            eggs.forEach((egg, index) => {
+                egg.y += dy;
+                if (egg.y > canvas.height) eggs.splice(index, 1);
+                if (isCaught(egg, EGG_WIDTH, EGG_HEIGHT)) {
+                    score += 1;
+                    eggs.splice(index, 1);
+                }
+            });
+
+            chickens.forEach((chicken, index) => {
+                chicken.y += dy * 1.5;
+                if (chicken.y > canvas.height) chickens.splice(index, 1);
+                if (isCaught(chicken, CHICKEN_WIDTH, CHICKEN_HEIGHT)) {
+                    score += 3;
+                    chickens.splice(index, 1);
+                }
+            });
+
+            bombs.forEach((bomb, index) => {
+                bomb.y += dy;
+                if (bomb.y > canvas.height) bombs.splice(index, 1);
+                if (isCaught(bomb, BOMB_WIDTH, BOMB_HEIGHT)) {
+                    lives -= 1;
+                    bombs.splice(index, 1);
+                }
+            });
+        }
+
+        // Check if basket catches an object
+        function isCaught(obj, width, height) {
+            return obj.x < basketX + BASKET_WIDTH &&
+                   obj.x + width > basketX &&
+                   obj.y < basketY + BASKET_HEIGHT &&
+                   obj.y + height > basketY;
+        }
+
+        // Update game logic
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBasket();
+            drawObjects();
+            moveObjects();
+            drawScore();
+            drawLives();
+
+            // Win/Lose conditions
+            if (score >= scoreToWin) {
+                clearInterval(gameInterval);
+                clearInterval(objectInterval);
+                displayMessage("YOU WIN!");
+            }
+            if (lives <= 0) {
+                clearInterval(gameInterval);
+                clearInterval(objectInterval);
+                displayMessage("GAME OVER");
+            }
+        }
+
+        // Draw score and lives
+        function drawScore() {
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "#333";
+            ctx.fillText("Score: " + score, 10, 30);
+        }
+
+        function drawLives() {
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "#333";
+            ctx.fillText("Lives: " + lives, canvas.width - 80, 30);
+        }
+
+        // Display end message
+        function displayMessage(message) {
+            ctx.font = "30px Arial";
+            ctx.fillStyle = "#333";
+            ctx.fillText(message, canvas.width / 2 - 80, canvas.height / 2);
+            ctx.fillText("Final Score: " + score, canvas.width / 2 - 80, canvas.height / 2 + 40);
+        }
+
+        // Keyboard controls
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft" && basketX > 0) basketX -= dxBasket;
+            if (e.key === "ArrowRight" && basketX < canvas.width - BASKET_WIDTH) basketX += dxBasket;
+        });
+
+        // Start game
+        function startGame() {
+            gameInterval = setInterval(updateGame, 20);
+            objectInterval = setInterval(spawnObject, 1400);
+        }
+
+        startGame();
+    </script>
+</body>
+</html>
